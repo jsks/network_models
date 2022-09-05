@@ -8,6 +8,8 @@ The following models are implemented in this repository:
 - SBM (stochastic block model)
 - SRM (social relations model)
 
+Each directory contains an interactive script, `sim.R`, that runs the
+respective model on a simulated dataset.
 
 ### Library Dependencies
 
