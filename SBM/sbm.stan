@@ -6,7 +6,7 @@ data {
   // Sender and receiver IDs for each directed dyad
   array[N, 2] int<lower=1, upper=n_actors> actor_id;
 
-  // Dyadic trade outcome
+  // Dyadic outcome
   array[N] real y;
 }
 

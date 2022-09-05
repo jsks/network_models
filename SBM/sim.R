@@ -1,4 +1,8 @@
 #!/usr/bin/env Rscript
+#
+# Simulation script for a stochastic block model using a gaussian
+# mixture.
+###
 
 library(bayesplot)
 library(blockmodels)
@@ -6,12 +10,16 @@ library(cmdstanr)
 library(dplyr)
 library(tidyr)
 
+# Function for cluster assignment comparison that is invariant to
+# label switching
 compare_clusters <- function(x, y) {
     a <- factor(x, unique(x))
     b <- factor(y, unique(y))
     as.integer(a) == as.integer(b)
 }
 
+###
+# Simulate dataset
 set.seed(1682)
 
 K <- 3
@@ -38,9 +46,10 @@ data <- list(N = nrow(dyads),
              y = dyads$y)
 str(data)
 
+###
+# Estimate model - note: due to label switching run only one chain
 mod <- cmdstan_model("./sbm.stan")
 fit <- mod$sample(data, chains = 1)
-fit <- mod$variational(data)
 
 Z_hat <- sapply(1:n_actors, function(i) {
     theta <- fit$draws(sprintf("theta[%d,%d]", i, 1:K), format = "draws_matrix")
@@ -63,7 +72,6 @@ diag(adjm) <- 0
 sbm <- BM_gaussian("SBM", adjm)
 sbm$estimate()
 
-sbm$model_parameters[[3]]
 sbm_Z_hat <- apply(sbm$memberships[[3]]$Z, 1, which.max)
 
 compare_clusters(Z, sbm_Z_hat) |> mean()

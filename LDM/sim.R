@@ -8,6 +8,8 @@ library(tidyr)
 
 options(mc.cores = parallel::detectCores() - 1)
 
+###
+# Simulate binary undirected network
 set.seed(8745)
 
 D <- 2
@@ -29,26 +31,24 @@ dyads$p <- apply(dyads, 1, function(actors) {
 dyads$y <- rbinom(nrow(dyads), 1, dyads$p)
 table(dyads$y)
 
-full.df <- dyads |> select(V1 = V2, V2 = V1, y, p) |> bind_rows(dyads)
-
 mod <- cmdstan_model("./ldm.stan")
-data <- list(N = nrow(full.df),
+data <- list(N = nrow(dyads),
              D = D,
              K = 1,
-             X = model.matrix(~ 1, data = full.df),
+             X = model.matrix(~ 1, data = dyads),
              n_actors = n_actors,
-             actor_id = select(full.df, V1, V2) |> data.matrix(),
-             y = full.df$y)
+             actor_id = select(dyads, V1, V2) |> data.matrix(),
+             y = dyads$y)
+str(data)
 
 fit <- mod$sample(data, chains = 1)
-
-log_odds <- fit$draws("log_odds", format = "draws_matrix")
-Z_est <- fit$draws("Z")
-mcmc_recover_intervals(Z_est, as.vector(Z))
+fit$cmdstan_diagnose()
 
 ###
-# Adjacency matrix
+# Adjacency matrix - estimate with latentnet
 library(latentnet)
+
+full.df <- dyads |> select(V1 = V2, V2 = V1, y, p) |> bind_rows(dyads)
 
 adjm <- arrange(full.df, V1) |>
     pivot_wider(id_cols = V1, names_from = V2, values_from = y) |>
