@@ -30,10 +30,7 @@ parameters {
   vector<lower=0, upper=pi()/2>[2] tau_unif;
   matrix[2, n_actors] gamma_raw;
 
-  //cholesky_factor_corr[D] L_multi;
-  //matrix[2, D] kappa;
   matrix[n_actors, 2*D] theta;
-  //array[D] matrix[n_actors, 2] theta;
 }
 
 transformed parameters {
@@ -50,12 +47,9 @@ transformed parameters {
   // gamma[actor, ] ~ multi_normal(0, CovMat)
   matrix[n_actors, 2] gamma = (diag_pre_multiply(tau, L_actor) * gamma_raw)';
 
-  //array[D] matrix[n_actors, 2] theta;
-  //for (i in 1:D)
-    // theta[i, actor, ] ~ multi_normal(0, CovMat)
-    //theta[i, ] = (diag_pre_multiply(kappa[, i], L_multi) * theta_raw[i, ])';
-
-  matrix[n_actors, n_actors] multi = theta[, :D] * theta[, (D+1):]';
+  // Columns 1:D are sender-specific latent vars, and (D+1): are the
+  // receiver latent vars
+  matrix[n_actors, n_actors] uv = theta[, :D] * theta[, (D+1):]';
 
   // Mean vector for likelihood
   array[n_dyads] vector[2] mu;
@@ -66,13 +60,13 @@ transformed parameters {
       mu[i, 1] = nu[i] + gamma[actor_id[i, 1], 1] + gamma[actor_id[i, 2], 2] +
         X_actor[actor_id[i, 1], ] * beta[:K_actor] +
         X_actor[actor_id[i, 2], ] * beta[(K_actor+1):] +
-        multi[actor_id[i, 1], actor_id[i, 2]];
+        uv[actor_id[i, 1], actor_id[i, 2]];
 
       // Actor2 as sender and Actor1 as receiver
       mu[i, 2] = nu[i] + gamma[actor_id[i, 2], 1] + gamma[actor_id[i, 1], 2] +
         X_actor[actor_id[i, 2], ] * beta[:K_actor] +
         X_actor[actor_id[i, 1], ] * beta[(K_actor+1):] +
-        multi[actor_id[i, 2], actor_id[i, 1]];
+        uv[actor_id[i, 2], actor_id[i, 1]];
     }
   }
 }
@@ -88,8 +82,6 @@ model {
   L_actor ~ lkj_corr_cholesky(2);
   to_vector(gamma_raw) ~ std_normal();
 
-  //L_multi ~ lkj_corr_cholesky(2);
-  //to_vector(kappa) ~ student_t(4, 0, 1);
   to_vector(theta) ~ std_normal();
 
   // Likelihood
@@ -100,7 +92,6 @@ model {
 generated quantities {
   corr_matrix[2] ActorCorrMat = multiply_lower_tri_self_transpose(L_actor);
   corr_matrix[2] DyadCorrMat = multiply_lower_tri_self_transpose(L_dyad);
-  //corr_matrix[2] MultiCorrMat = multiply_lower_tri_self_transpose(L_multi);
 
   array[n_dyads] vector[2] y_hat;
   for (i in 1:n_dyads)

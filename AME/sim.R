@@ -105,7 +105,7 @@ data <- list(n_dyads = n_dyads,
              y = y)
 str(data)
 
-fit <- mod$sample(data = data, chains = 4, max_treedepth = 12)
+fit <- mod$sample(data = data, chains = 4)
 
 ###
 # Check if we recover the true parameter values
@@ -115,6 +115,12 @@ theta <- fit$draws(c("alpha", "beta", "lambda", "sigma", "tau", "DyadCorrMat[2,1
     mutate(sigma = sigma^2)
 
 mcmc_recover_intervals(theta, c(alpha, beta, lambda, sigma, tau, rho))
+
+###
+# Latent interaction term per directed dyad
+uv_hat <- fit$draws("uv", format = "draws_matrix")
+
+mcmc_recover_intervals(uv_hat, as.vector(uv))
 
 ###
 # Plot posterior predictions for y
